@@ -64,7 +64,7 @@ class KafkaClient(object):
         host_key = (host, port)
         if self.ip_mapping is not None:
             host_key = (self._get_ip_mapping(host), port)
-            log.info('use converted host %s' % host_key[0])
+            log.debug('convert host address %s to %s' % (host, host_key[0]))
         if host_key not in self.conns:
             self.conns[host_key] = KafkaConnection(
                 host,
