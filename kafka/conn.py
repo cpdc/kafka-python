@@ -1,6 +1,7 @@
 import copy
 import logging
 from random import shuffle
+import os.path
 import socket
 import struct
 from threading import local
@@ -14,6 +15,15 @@ log = logging.getLogger("kafka")
 DEFAULT_SOCKET_TIMEOUT_SECONDS = 120
 DEFAULT_KAFKA_PORT = 9092
 
+def collect_ip_mapping(mapping_file):
+    if os.path.exists(mapping_file) == False:
+        raise Exception('ip mapping file: %s doesn\'t exist' % mapping_file)
+    mapping = {}
+    with open(mapping_file, 'r') as f:
+        for line in f.readlines():
+            line = line.split('\t')
+            mapping[line[0]] = line[1]
+    return mapping
 
 def collect_hosts(hosts, randomize=True):
     """

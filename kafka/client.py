@@ -13,7 +13,7 @@ from kafka.common import (TopicAndPartition, BrokerMetadata,
                           LeaderNotAvailableError, UnknownTopicOrPartitionError,
                           NotLeaderForPartitionError, ReplicaNotAvailableError)
 
-from kafka.conn import collect_hosts, KafkaConnection, DEFAULT_SOCKET_TIMEOUT_SECONDS
+from kafka.conn import collect_hosts, collect_ip_mapping, KafkaConnection, DEFAULT_SOCKET_TIMEOUT_SECONDS
 from kafka.protocol import KafkaProtocol
 
 log = logging.getLogger("kafka")
@@ -28,12 +28,18 @@ class KafkaClient(object):
     # one passed to SimpleConsumer.get_message(), otherwise you can get a
     # socket timeout.
     def __init__(self, hosts, client_id=CLIENT_ID,
-                 timeout=DEFAULT_SOCKET_TIMEOUT_SECONDS):
+                 timeout=DEFAULT_SOCKET_TIMEOUT_SECONDS,
+                 ip_mapping_file = None):
         # We need one connection to bootstrap
         self.client_id = client_id
         self.timeout = timeout
         self.hosts = collect_hosts(hosts)
-
+        if ip_mapping_file is not None:
+            self.ip_mapping = collect_ip_mapping(ip_mapping_file)
+            log.info("initialized with ip mapping: %s" % self.ip_mapping)
+        else:
+            self.ip_mapping = None
+            log.info("intialize without ip mapping")
         # create connections only when we need them
         self.conns = {}
         self.brokers = {}            # broker_id -> BrokerMetadata
@@ -47,9 +53,18 @@ class KafkaClient(object):
     #   Private API  #
     ##################
 
+    def _get_ip_mapping(self, ip):
+        if self.ip_mapping is None:
+            return ip
+        else:
+            return self.ip_mapping[ip] if ip in self.ip_mapping else ip
+
     def _get_conn(self, host, port):
         "Get or create a connection to a broker using host and port"
         host_key = (host, port)
+        if self.ip_mapping is not None:
+            host_key = (self._get_ip_mapping(host), port)
+            log.info('use converted host %s' % host_key[0])
         if host_key not in self.conns:
             self.conns[host_key] = KafkaConnection(
                 host,
