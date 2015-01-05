@@ -350,6 +350,10 @@ class KafkaClient(object):
                     log.error('No leader for topic %s partition %d', topic, partition)
                     self.topics_to_brokers[topic_part] = None
                     continue
+                except ReplicaNotAvailableError:
+                    log.error("ReplicaNotAvailableError for %s", topic)
+                    self.topics_to_brokers[topic_part] = None
+                    continue
 
                 # If Known Broker, topic_partition -> BrokerMetadata
                 if leader in self.brokers:
